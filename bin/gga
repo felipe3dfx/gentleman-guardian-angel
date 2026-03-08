@@ -62,7 +62,7 @@ UPDATE_CHECK_REPO="Gentleman-Programming/gentleman-guardian-angel"
 # Check for newer version on GitHub (2s timeout, silent on failure)
 check_update() {
   local latest_tag
-  latest_tag=$(curl -sf --max-time 2 \
+  latest_tag=$("${CURL_CMD:-curl}" -sf --max-time 2 \
     -H "Accept: application/vnd.github+json" \
     "https://api.github.com/repos/${UPDATE_CHECK_REPO}/releases/latest" \
     2>/dev/null | grep -o '"tag_name":\s*"[^"]*"' | head -1 | grep -o 'v[^"]*') || return 0
