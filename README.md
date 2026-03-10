@@ -740,6 +740,99 @@ This file is **89 lines**, uses clear keywords, and has references for component
 
 > 💡 **Pro tip**: Your `AGENTS.md` can also serve as documentation for human reviewers!
 
+#### 6. Use Skills for Large or Multi-Stack Projects
+
+Instead of cramming every rule into a single file (which adds noise and dilutes the AI's focus), use a **skill-based approach**: define an index of triggers and skills, and let the AI load only what's relevant for the files being reviewed.
+
+**Why this matters:**
+- More context ≠ better reviews. Large prompts introduce noise that degrades AI response quality.
+- A focused, small prompt with only the relevant rules produces significantly better results.
+- This also avoids OS-level argument size limits (`ARG_MAX`) that can cause failures on large PRs.
+
+**How it works:**
+
+Your `AGENTS.md` has two parts:
+1. **A skill index** — maps file patterns to skill files with specific rules
+2. **General rules** — always-on rules that apply to every file
+
+```markdown
+# Code Review Rules
+
+## Skill Index
+
+| Trigger (file pattern) | Skill | Location |
+|------------------------|-------|----------|
+| `*.ts`, `*.tsx` | TypeScript | `docs/skills/typescript.md` |
+| `*.tsx`, `*.jsx` | React | `docs/skills/react.md` |
+| `*.css`, `*.scss`, `className=` | Styling | `docs/skills/tailwind.md` |
+| `*.py` | Python | `docs/skills/python.md` |
+| `*.test.*`, `*.spec.*` | Testing | `docs/skills/testing.md` |
+| `*.go` | Go | `docs/skills/go.md` |
+| `Dockerfile`, `*.yml` | Infrastructure | `docs/skills/infra.md` |
+
+---
+
+## General Rules (always active)
+
+REJECT if:
+- Hardcoded secrets or credentials
+- `console.log` / `print()` in production code
+- Empty catch/except blocks (silent error swallowing)
+- Code duplication (DRY violation)
+- Missing error handling
+
+REQUIRE:
+- Descriptive variable and function names
+- Error messages that help debugging
+
+## Response Format
+
+FIRST LINE must be exactly:
+STATUS: PASSED
+or
+STATUS: FAILED
+
+If FAILED, list: `file:line - rule violated - issue`
+```
+
+Each skill file is a focused, self-contained set of rules:
+
+```markdown
+<!-- docs/skills/typescript.md -->
+# TypeScript Review Rules
+
+REJECT if:
+- `any` type without `// @ts-expect-error` justification
+- Missing return types on exported functions
+- Type assertions (`as X`) without comment explaining why
+- `enum` used → use `as const` objects instead
+
+PREFER:
+- Discriminated unions over type guards
+- `satisfies` over type assertions
+- Named exports over default exports
+```
+
+```markdown
+<!-- docs/skills/react.md -->
+# React Review Rules
+
+REJECT if:
+- `import React` → use named imports `import { useState }`
+- `useMemo`/`useCallback` without justification (React 19 Compiler handles this)
+- Missing `"use client"` directive in client components
+- Props drilling more than 2 levels deep
+
+PREFER:
+- Composition over inheritance
+- Semantic HTML (`<section>`, `<article>`) over generic `<div>`
+- Colocated files (component + test + styles in same directory)
+```
+
+**The AI sees the index, checks which files are in the diff, and reads only the relevant skill files.** A PR that only touches `.py` files won't load React or TypeScript rules — the AI gets a clean, focused prompt with just what it needs.
+
+> ⚠️ **Note**: This works best with providers that have file-reading capabilities (Claude, Gemini, Codex). For Ollama or other pure LLMs without tool use, you'll need to keep rules in a single file.
+
 ---
 
 ## 🎨 Project Examples
